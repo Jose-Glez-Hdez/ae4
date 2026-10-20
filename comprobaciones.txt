@@ -1,0 +1,135 @@
+]633;E;echo "# Comprobaciones AE4 — $(date '+%Y-%m-%d %H:%M')";4b77fc98-46d2-4fcd-921a-cd34892cccf7]633;C# Comprobaciones AE4 — 2026-10-20 11:30
+
+$ docker compose ps
+NAME            IMAGE                                                                     COMMAND                  SERVICE   CREATED          STATUS                    PORTS
+ae4-app-1       sha256:bb99793db957dfc819d384dd2e7706e398c1df72e1eff22f1996d945436147ab   "gunicorn config.wsg…"   app       33 minutes ago   Up 6 minutes (healthy)    8000/tcp
+ae4-db-1        postgres:16-alpine                                                        "docker-entrypoint.s…"   db        57 minutes ago   Up 57 minutes (healthy)   5432/tcp
+ae4-nginx-1     nginx:1.27-alpine                                                         "/docker-entrypoint.…"   nginx     57 minutes ago   Up 56 minutes             0.0.0.0:8000->80/tcp, [::]:8000->80/tcp
+ae4-pgadmin-1   dpage/pgadmin4:9.17                                                       "/entrypoint.sh"         pgadmin   15 minutes ago   Up 15 minutes (healthy)   443/tcp, 0.0.0.0:5050->80/tcp, [::]:5050->80/tcp
+
+$ curl http://localhost:8000/
+<!doctype html>
+<html lang="es">
+<head><meta charset="utf-8"><title>Aplicación DPL — UT4</title></head>
+<body>
+  <h1>Aplicación DPL — UT4</h1>
+  <p>Hola desde el servidor de aplicaciones</p>
+  <p>Servidor de aplicaciones: <code>57890037420c</code></p>
+  <ul>
+    <li><a href="/healthz">/healthz</a></li>
+    <li><a href="/api/mensaje">/api/mensaje</a></li>
+    <li><a href="/api/visitas">/api/visitas</a></li>
+    <li><a href="/api/lugares">/api/lugares</a></li>
+  </ul>
+</body>
+</html>
+
+$ curl -sf http://localhost:8000/healthz
+{"status": "ok"}
+$ curl -sf http://localhost:8000/api/mensaje
+{"mensaje": "Hola desde el servidor de aplicaciones", "hostname": "57890037420c", "fecha": "2026-10-20T13:30:41+02:00"}
+$ curl -sf http://localhost:8000/api/lugares
+{"lugares": [{"id": 1, "name": "Tokio", "visited": false}, {"id": 2, "name": "Budapest", "visited": true}, {"id": 3, "name": "Londres", "visited": false}, {"id": 4, "name": "Lisboa", "visited": true}, {"id": 5, "name": "París", "visited": false}, {"id": 6, "name": "Madrid", "visited": false}, {"id": 7, "name": "Berlín", "visited": true}, {"id": 8, "name": "Viena", "visited": false}, {"id": 9, "name": "Estambul", "visited": true}, {"id": 10, "name": "Oslo", "visited": false}, {"id": 11, "name": "Zúrich", "visited": false}], "total": 11}
+$ docker compose exec -T db psql -U alumno -d travelroad -c "SELECT count(*) FROM places;"
+ count 
+-------
+    11
+(1 row)
+
+
+$ curl -sf http://localhost:5050/misc/ping
+PING
+# Persistencia del contador
+$ curl -s http://localhost:8000/api/visitas (antes)
+{"visitas": 8}$ docker compose restart app
+ Container ae4-app-1 Restarting 
+ Container ae4-app-1 Started 
+$ curl -s http://localhost:8000/api/visitas (después)
+{"visitas": 9}
+# Persistencia de la base de datos
+$ docker compose restart db
+ Container ae4-db-1 Restarting 
+ Container ae4-db-1 Started 
+ count 
+-------
+    11
+(1 row)
+
+
+$ ls -l deploy.sh
+-rwxr-xr-x 1 root root 611 Oct 20 11:27 deploy.sh
+
+$ ./deploy.sh
+[1/3] Construyendo imágenes...
+ Image ae4-app Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 466B done
+#1 DONE 0.0s
+
+#2 [internal] load build definition from dockerfile
+#2 transferring dockerfile: 406B done
+#2 DONE 0.0s
+
+#3 [internal] load metadata for docker.io/library/python:3.12-slim
+#3 DONE 0.4s
+
+#4 [internal] load .dockerignore
+#4 transferring context: 2B done
+#4 DONE 0.0s
+
+#5 [1/6] FROM docker.io/library/python:3.12-slim@sha256:a6e34c598f2467ed0e9a8d349809fcd8b5c603269512df273a0bb1784edc11b1
+#5 resolve docker.io/library/python:3.12-slim@sha256:a6e34c598f2467ed0e9a8d349809fcd8b5c603269512df273a0bb1784edc11b1 0.0s done
+#5 DONE 0.0s
+
+#6 [internal] load build context
+#6 transferring context: 861.43kB 0.7s done
+#6 DONE 0.7s
+
+#7 [2/6] WORKDIR /app
+#7 CACHED
+
+#8 [3/6] COPY requirements.txt .
+#8 CACHED
+
+#9 [4/6] RUN pip install --no-cache-dir -r requirements.txt
+#9 CACHED
+
+#10 [5/6] COPY . .
+#10 CACHED
+
+#11 [6/6] RUN useradd --create-home --uid 1000 appuser     && mkdir -p /data     && chown appuser:appuser /data
+#11 CACHED
+
+#12 exporting to image
+#12 exporting layers done
+#12 exporting manifest sha256:f65d782a69efc53c1695f5a399155c17a1470fd524b8b32018f83fab0ff7f907 done
+#12 exporting config sha256:4a097c0ddbcbfa6d2263d3b37737fb3091b9b81d322a1e870fd10ba7e7978d43 done
+#12 exporting attestation manifest sha256:d509ca7671950dc3119af6efc030a6f3ffdc42d9c375b76a4705465cb4c09444 0.0s done
+#12 exporting manifest list sha256:4e59b8f16205c06e373147b469e640d5f22b1782e1d3a1447ef54089c41ddf42 0.0s done
+#12 naming to docker.io/library/ae4-app:latest done
+#12 unpacking to docker.io/library/ae4-app:latest
+#12 unpacking to docker.io/library/ae4-app:latest done
+#12 DONE 0.1s
+
+#13 resolving provenance for metadata file
+#13 DONE 0.0s
+ Image ae4-app Built 
+[2/3] Arrancando servicios...
+ Container ae4-nginx-1 Running 
+ Container ae4-db-1 Running 
+ Container ae4-pgadmin-1 Running 
+ Container ae4-app-1 Running 
+ Container ae4-db-1 Waiting 
+ Container ae4-db-1 Waiting 
+ Container ae4-db-1 Healthy 
+ Container ae4-app-1 Waiting 
+ Container ae4-db-1 Healthy 
+ Container ae4-app-1 Healthy 
+[3/3] Esperando a que http://localhost:8000/healthz responda 200...
+Despliegue correcto tras 1 intento(s).
+NAME            IMAGE                                                                     COMMAND                  SERVICE   CREATED          STATUS                    PORTS
+ae4-app-1       sha256:bb99793db957dfc819d384dd2e7706e398c1df72e1eff22f1996d945436147ab   "gunicorn config.wsg…"   app       33 minutes ago   Up 24 seconds (healthy)   8000/tcp
+ae4-db-1        postgres:16-alpine                                                        "docker-entrypoint.s…"   db        57 minutes ago   Up 13 seconds (healthy)   5432/tcp
+ae4-nginx-1     nginx:1.27-alpine                                                         "/docker-entrypoint.…"   nginx     57 minutes ago   Up 57 minutes             0.0.0.0:8000->80/tcp, [::]:8000->80/tcp
+ae4-pgadmin-1   dpage/pgadmin4:9.17                                                       "/entrypoint.sh"         pgadmin   16 minutes ago   Up 16 minutes (healthy)   443/tcp, 0.0.0.0:5050->80/tcp, [::]:5050->80/tcp
+código de salida: 0
