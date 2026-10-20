@@ -24,6 +24,9 @@ services:
       - "5050:80"
     volumes:
       - pgadmin-data:/var/lib/pgadmin
+    configs:
+      - source: pgadmin-servers
+        target: /pgadmin4/servers.json
     depends_on:
       db:
         condition: service_healthy
@@ -72,3 +75,9 @@ volumes:
   db-data:
   pgadmin-data:
   app-data:
+
+configs:
+  pgadmin-servers:
+    content: |
+      {"Servers": {"1": {"Name": "TravelRoad", "Group": "Servers", "Host": "db", "Port": 5432,
+       "MaintenanceDB": "travelroad", "Username": "alumno", "SSLMode": "prefer"}}}
