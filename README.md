@@ -113,7 +113,8 @@ flowchart LR
 ```
 
 ## Credenciales
-Todas las credenciales se aportan mediante variables de entorno.
+- Copia la plantilla y cambia los valores: `cp .env.example .env` (`.env` no se sube al repositorio).
+- Si no existe `.env`, `compose.yml` usa valores de laboratorio: contraseña `CAMBIAR_ESTO` y usuario de pgAdmin `admin@dpl.com`.
 
 ## Limpieza
 `docker compose down` (conserva datos) · `docker compose down -v` (borra los volúmenes)

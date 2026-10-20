@@ -4,7 +4,7 @@ services:
     environment:
       POSTGRES_DB: travelroad
       POSTGRES_USER: alumno
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-CAMBIAR_ESTO}
     volumes:
       - db-data:/var/lib/postgresql/data
       - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
@@ -18,8 +18,8 @@ services:
   pgadmin:                           
     image: dpage/pgadmin4:9.17
     environment:
-      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL}
-      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD}
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_EMAIL:-admin@dpl.com}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:-CAMBIAR_ESTO}
     ports:
       - "5050:80"
     volumes:
@@ -46,7 +46,7 @@ services:
       DB_HOST: db
       DB_NAME: travelroad
       DB_USER: alumno
-      DB_PASSWORD: ${DB_PASSWORD}
+      DB_PASSWORD: ${DB_PASSWORD:-CAMBIAR_ESTO}
     volumes:
       - app-data:/data
     healthcheck:
