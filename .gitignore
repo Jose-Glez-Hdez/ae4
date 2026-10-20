@@ -5,4 +5,5 @@ backup-*.sql
 __pycache__/
 *.pyc
 .DS_Store
+.vscode/
 ut04
