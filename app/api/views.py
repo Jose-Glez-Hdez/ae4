@@ -78,23 +78,51 @@ def lugares(request):
 
 @require_POST
 def login(request):
-    host = os.environ.get("LDAP_HOST", "")
-    if not host:
-        return _json({"error": "Directorio LDAP no configurado (falta LDAP_HOST)"}, status=503)
+    """Autentica a un usuario contra el directorio LDAP (bind + búsqueda).
 
-    from ldap3 import Connection, Server
+    Variables de entorno:
+    - LDAP_HOST: URL del directorio (p. ej. ldap://IP_DPL_LAB). Sin ella, 503.
+    - LDAP_BASE_DN: base de búsqueda (por defecto ou=usuarios,dc=dpl,dc=local).
+    - LDAP_USER_FILTER: filtro por usuario (por defecto (uid=%s)).
+
+    Nunca se escriben credenciales en el código: el bind usa el usuario y la
+    contraseña que llegan en la petición.
+    """
+    ldap_host = os.environ.get("LDAP_HOST", "")
+    if not ldap_host:
+        return _json(
+            {"error": "Directorio no configurado", "detalle": "Define LDAP_HOST para habilitar /api/login"},
+            status=503,
+        )
 
     usuario = request.POST.get("usuario", "")
     password = request.POST.get("password", "")
-    base_dn = os.environ.get("LDAP_BASE_DN", "dc=dpl,dc=local")
-    user_dn = f"uid={usuario},ou=people,{base_dn}"
     if not usuario or not password:
-        return _json({"error": "Faltan usuario o contraseña"}, status=401)
+        return _json({"error": "Faltan usuario o contraseña"}, status=400)
+
+    base_dn = os.environ.get("LDAP_BASE_DN", "ou=usuarios,dc=dpl,dc=local")
+    filtro = os.environ.get("LDAP_USER_FILTER", "(uid=%s)")
+    if "%s" in filtro:
+        filtro = filtro % usuario
+    user_dn = f"uid={usuario},{base_dn}"
+
+    from ldap3 import Connection
+    from ldap3.core.exceptions import LDAPException
+
     try:
-        conexion = Connection(Server(host, connect_timeout=3), user=user_dn, password=password)
-        if not conexion.bind():
-            return _json({"error": "Credenciales incorrectas"}, status=401)
+        conexion = Connection(ldap_host, user=user_dn, password=password, auto_bind=True)
+    except LDAPException as error:
+        return _json({"autenticado": False, "usuario": usuario, "detalle": str(error)}, status=401)
+
+    perfil = {}
+    try:
+        conexion.search(search_base=base_dn, search_filter=filtro, attributes=["cn", "mail"])
+        if conexion.entries:
+            entrada = conexion.entries[0]
+            perfil = {"cn": str(entrada.cn), "mail": str(entrada.mail)}
+    except LDAPException:
+        perfil = {}
+    finally:
         conexion.unbind()
-    except Exception as exc:
-        return _json({"error": f"No se pudo contactar con el directorio: {exc}"}, status=503)
-    return _json({"usuario": usuario, "dn": user_dn})
+
+    return _json({"autenticado": True, "usuario": usuario, "perfil": perfil})
